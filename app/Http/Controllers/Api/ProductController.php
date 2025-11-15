@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -21,14 +22,32 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric',
             'description' => 'required|string',
-            'image_url' => 'nullable|url',
+            'marketplace_url' => 'nullable|url',
+            'rating' => 'nullable|numeric',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', 
         ]);
 
-        $product = Product::create($request->all());
+        $imageUrl = null;
+
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            
+            $imageUrl = Storage::url($path);
+        }
+
+        $product = Product::create([
+            'name' => $validated['name'],
+            'price' => $validated['price'],
+            'description' => $validated['description'],
+            'marketplace_url' => $validated['marketplace_url'],
+            'rating' => $validated['rating'] ?? null,
+            'image_url' => $imageUrl,
+        ]);
+
         return response()->json($product, 201);
     }
 
@@ -45,14 +64,29 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric',
             'description' => 'required|string',
-            'image_url' => 'nullable|url',
+            'marketplace_url' => 'nullable|url',
+            'rating' => 'nullable|numeric',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $product->update($request->all());
+        $dataToUpdate = $request->except('image_file');
+
+        if ($request->hasFile('image_file')) {
+            if ($product->image_url) {
+               $oldPath = str_replace(Storage::url(''), '', $product->image_url);
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            $path = $request->file('image_file')->store('products', 'public');
+            $dataToUpdate['image_url'] = Storage::url($path);
+        }
+
+        $product->update($dataToUpdate);
+
         return response()->json($product);
     }
 
@@ -61,7 +95,13 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        if ($product->image_url) {
+            $path = str_replace(Storage::url(''), '', $product->image_url);
+            Storage::disk('public')->delete($path);
+        }
+
         $product->delete();
+
         return response()->json(null, 204);
     }
 }
