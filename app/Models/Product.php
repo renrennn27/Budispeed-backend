@@ -15,6 +15,6 @@ class Product extends Model
         'description',
         'image_url',
         'rating',
-        'product_url',
+        'marketplace_url',
     ];
 }

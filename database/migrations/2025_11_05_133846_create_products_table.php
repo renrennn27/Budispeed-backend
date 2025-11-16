@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description');
             $table->string('image_url')->nullable();
             $table->float('rating')->nullable();
-            $table->string('product_url')->nullable();
+            $table->string('marketplace_url')->nullable();
             $table->timestamps();
         });
     }
